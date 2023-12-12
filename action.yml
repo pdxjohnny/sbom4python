@@ -7,6 +7,14 @@ inputs:
   python-version:
     description: 'Version of Python used'
     required: true
+  output-directory:
+    description: 'Directory to output to'
+    required: false
+    default: 'sbom'
+outputs:
+  changed:
+    description: "Did SBOM change?"
+    value: ${{ steps.diff-sbom.outputs.changed }}
 runs:
   using: "composite"
   steps:
@@ -26,7 +34,7 @@ runs:
           exit 0
         fi
 
-        /bin/tail -n +10 "sbom/${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx" > orig
+        /bin/tail -n +10 "${{ inputs.output-directory }}/${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx" > orig
         /bin/tail -n +10 "${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx" > new
         echo "changed=$(/bin/diff -q orig new)" >> $GITHUB_OUTPUT
     - name: Display generated SBOM if difference detected
@@ -38,17 +46,6 @@ runs:
       shell: bash
       if: ${{ steps.diff-sbom.outputs.changed }}
       run: |
-        mkdir -pv sbom/
-        cp "${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx" "sbom/${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx"
-        cp "${{ inputs.module-name }}-py${{ inputs.python-version }}.json" "sbom/${{ inputs.module-name }}-py${{ inputs.python-version }}.json"
-    - name: Create Pull Request
-      shell: bash
-      if: ${{ steps.diff-sbom.outputs.changed }}
-      uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # v5.0.2
-      with:
-        commit-message: "chore: update SBOM for Python ${{ inputs.python-version }}"
-        title: "chore: update SBOM for Python ${{ inputs.python-version }}"
-        branch: chore-sbom-py${{ inputs.python-version }}
-        delete-branch: true
-        author: GitHub Actions <actions@github.com>
-        add-paths: sbom
+        mkdir -pv ${{ inputs.output-directory }}/
+        cp "${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx" "${{ inputs.output-directory }}/${{ inputs.module-name }}-py${{ inputs.python-version }}.spdx"
+        cp "${{ inputs.module-name }}-py${{ inputs.python-version }}.json" "${{ inputs.output-directory }}/${{ inputs.module-name }}-py${{ inputs.python-version }}.json"
